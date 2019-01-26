@@ -1,25 +1,78 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
 
+### load the data
 
-## Loading and preprocessing the data
+load the data through `read.csv`
+```{r}
+data <- read.csv("activity.csv", stringsAsFactors = FALSE)
+data$date <- as.Date(data$date, "%Y-%m-%d")
+str(data)
+```
 
+### What is mean total number of steps taken per day?
 
+use tidyverse to summarise and visualization the data
 
-## What is mean total number of steps taken per day?
+#### Calculate the total number of steps taken per day
+```{r}
+library(tidyverse)
+(totalCount <- data %>% group_by(date) %>% summarise(totalCount = sum(steps, na.rm = T)))
+ggplot(totalCount, aes(x =totalCount)) + geom_histogram(color = "black", fill = "white") + theme_bw()
+```
 
+#### Calculate and report the mean and median of the total number of steps taken per day
+```{r}
+mean(totalCount$totalCount)
+median(totalCount$totalCount)
+```
 
+### What is the average daily activity pattern?
 
-## What is the average daily activity pattern?
+#### Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
 
+```{r}
+(dataMeanPerInterval <- data %>% group_by(interval) %>% summarise(mean = mean(steps, na.rm = T)))
+plot(dataMeanPerInterval$interval, dataMeanPerInterval$mean, type = "l")
+```
 
+#### Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
 
-## Imputing missing values
+```{r}
+dataMeanPerInterval$interval[which.max(dataMeanPerInterval$mean)]
+```
 
+### Imputing missing values
 
+#### Calculate and report the total number of missing values in the dataset 
 
-## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+sum(is.na(data$steps))
+```
+
+#### filling in all of the missing values in the dataset.
+using the mean for that 5-minute interval to fill the dataset
+
+```{r}
+newdata <- data
+for(i in dataMeanPerInterval$interval){
+  newdata$steps[is.na(newdata$steps) & newdata$interval == i] <- dataMeanPerInterval$mean[dataMeanPerInterval$interval == i]
+}
+```
+#### Make a histogram of the total number of steps taken each day
+
+```{r}
+(totalCount_new <- newdata %>% group_by(date) %>% summarise(totalCount = sum(steps, na.rm = T)))
+ggplot(totalCount_new, aes(x =totalCount)) + geom_histogram(color = "black", fill = "white") + theme_bw()
+mean(totalCount_new$totalCount)
+median(totalCount_new$totalCount)
+```
+
+these values differ from the estimates from the first part of the assignment. 
+
+### Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+newdata$week <- ifelse(weekdays(newdata$date) %in% c("Saturday", "Sunday"), "weekends", "weekdays")
+(dataMeanIntervWeekday  <- newdata %>% group_by(interval, week) %>% summarise(mean = mean(steps, na.rm = T)))
+ggplot(dataMeanIntervWeekday, aes(x = interval, y = mean)) + geom_line() + facet_grid(week ~ .)
+```
+
